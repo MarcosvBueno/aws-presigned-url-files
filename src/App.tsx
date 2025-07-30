@@ -3,6 +3,8 @@ import { useDropzone } from 'react-dropzone';
 import { cn } from './lib/utils';
 import { PackageOpenIcon, Trash2Icon } from 'lucide-react';
 import { Button } from './components/ui/button';
+import { getPresignedUrl } from './services/getPresignedUrl';
+import { uploadFile } from './services/uploadFile';
 
 function App() {
   const [files, setFiles] = useState<File[]>([]);
@@ -20,6 +22,29 @@ function App() {
       return newFiles;
     });
   }
+
+  async function handleUpload() {
+    const urls = await Promise.all(
+      files.map(async (file) => ({
+        file,
+        url: await getPresignedUrl(file),
+      }))
+    );
+
+      const response = await Promise.allSettled(urls.map(({ file, url }) => (
+      uploadFile(file, url.signedUrl)
+     )));
+    
+     response.forEach((response ) => {
+      if (response.status === 'rejected') {
+        console.error('Upload failed:', response.reason);
+      } else {
+        console.log('Upload successful:', response.value);
+      }
+     }) 
+  }
+
+
 
   return (
     <div className="min-h-screen flex justify-center py-20 px-6">
@@ -61,7 +86,7 @@ function App() {
             ))}
 
             </div>
-            <Button className='mt-4 w-full cursor-pointer' size='lg'>
+            <Button className='mt-4 w-full cursor-pointer' size='lg' onClick={handleUpload}>
               Upload
             </Button>
           </div>
