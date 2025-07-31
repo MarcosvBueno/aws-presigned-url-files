@@ -1,69 +1,254 @@
-# React + TypeScript + Vite
+# AWS Presigned URL Files
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Uma aplicação React moderna para upload de arquivos utilizando URLs pré-assinadas do Amazon S3. O projeto oferece uma interface intuitiva de drag-and-drop com acompanhamento de progresso em tempo real e tratamento robusto de erros.
 
-Currently, two official plugins are available:
+## 📋 Sobre o Projeto
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Este projeto demonstra uma implementação completa e robusta para upload de arquivos para AWS S3 utilizando URLs pré-assinadas. A arquitetura serverless garante que o backend controle as permissões de upload enquanto o frontend realiza o upload diretamente para o S3, com rastreamento automático de status através de triggers e DynamoDB, proporcionando uma solução escalável e eficiente.
 
-## Expanding the ESLint configuration
+### ✨ Funcionalidades
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- 🎯 Interface drag-and-drop intuitiva
+- 📊 Acompanhamento de progresso de upload em tempo real
+- 🔒 Upload seguro utilizando URLs pré-assinadas do AWS S3
+- 🗑️ Remoção de arquivos da fila antes do upload
+- 🎨 Interface moderna e responsiva
+- 🔔 Notificações de sucesso/erro
+- 🚀 Upload paralelo de múltiplos arquivos
+- 📊 Rastreamento automático de status via DynamoDB
+- ⚡ Triggers S3 para atualização automática de status
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 🛠️ Tecnologias Utilizadas
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+### Frontend
+- **React 19.1.0** - Biblioteca principal para construção da interface
+- **TypeScript** - Tipagem estática para maior robustez
+- **Vite** - Build tool moderna e rápida
+- **Tailwind CSS 4.1.11** - Framework CSS utilitário
+- **Axios** - Cliente HTTP para requisições
+- **React Dropzone** - Componente drag-and-drop
+- **Lucide React** - Biblioteca de ícones
+- **Radix UI** - Componentes acessíveis (Progress, Slot)
+- **Sonner** - Biblioteca de notificações toast
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Ferramentas de Desenvolvimento
+- **ESLint** - Linting e formatação de código
+- **TypeScript ESLint** - Regras específicas para TypeScript
+
+### Arquitetura AWS
+- **AWS S3** - Armazenamento de arquivos
+- **AWS Lambda** - Geração de URLs pré-assinadas e processamento de triggers
+- **Amazon DynamoDB** - Rastreamento de status dos uploads
+- **S3 Event Notifications** - Triggers automáticos para atualização de status
+
+## 🏗️ Arquitetura
+
+```
+                                    S3 Triggers
+                                        ↓
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   React App     │────│  AWS Lambda     │────│   Amazon S3     │────│  AWS Lambda     │
+│                 │    │                 │    │                 │    │                 │
+│ • Upload UI     │    │ • Generate      │    │ • File Storage  │    │ • Update Status │
+│ • Progress      │    │   Presigned URL │    │ • Event Trigger │    │ • Process Events│
+│ • File Preview  │    │ • Save Status   │    │ • Direct Upload │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │                                              │
+                                │                                              │
+                                ▼                                              ▼
+                       ┌─────────────────┐                         ┌─────────────────┐
+                       │  Amazon         │◄────────────────────────│   Status Update │
+                       │  DynamoDB       │                         │   (UPLOADED)    │
+                       │                 │                         │                 │
+                       │ • FileKey       │                         │                 │
+                       │ • Status        │                         │                 │
+                       │ • Metadata      │                         │                 │
+                       └─────────────────┘                         └─────────────────┘
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Fluxo de Upload
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. **Seleção de Arquivo**: Usuário seleciona arquivos via drag-and-drop ou clique
+2. **Requisição de URL**: Frontend solicita URL pré-assinada para cada arquivo via Lambda
+3. **Validação e Registro**: Lambda valida o arquivo, gera URL com permissões temporárias e salva status "PENDING" no DynamoDB
+4. **Upload Direto**: Frontend faz upload diretamente para S3 usando a URL pré-assinada
+5. **Trigger S3**: Quando o arquivo é carregado no S3, um evento é disparado
+6. **Atualização de Status**: Lambda de trigger atualiza o status para "UPLOADED" no DynamoDB
+7. **Progresso**: Acompanhamento em tempo real do progresso de cada upload no frontend
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## 🚀 Como Executar o Projeto
+
+### Pré-requisitos
+
+- Node.js (versão 18 ou superior)
+- npm ou yarn
+- Conta AWS configurada (para o backend)
+
+### Instalação
+
+1. **Clone o repositório**
+```bash
+git clone https://github.com/MarcosvBueno/aws-presigned-url-images.git
+cd aws-presigned-url-images
 ```
+
+2. **Instale as dependências**
+```bash
+npm install
+```
+
+3. **Execute o projeto em modo de desenvolvimento**
+```bash
+npm run dev
+```
+
+4. **Acesse a aplicação**
+Abra [http://localhost:5173](http://localhost:5173) no seu navegador
+
+### Scripts Disponíveis
+
+```bash
+npm run dev      # Inicia o servidor de desenvolvimento
+npm run build    # Gera build de produção
+npm run preview  # Preview do build de produção
+npm run lint     # Executa o linter
+```
+
+## 🌐 Backend/Infraestrutura
+
+O projeto utiliza uma arquitetura serverless completa na AWS:
+
+### Componentes AWS
+
+- **AWS Lambda (Presigned URL)**: `https://klh52wtuwl7c4xsbkvxdnh2v3a0pgruo.lambda-url.us-east-1.on.aws/`
+- **AWS Lambda (S3 Trigger)**: Processa eventos de upload e atualiza status
+- **Amazon S3**: Armazenamento de arquivos com event notifications
+- **Amazon DynamoDB**: Tabela para rastreamento de status dos uploads
+- **Região**: `us-east-1`
+
+### Fluxo de Dados
+
+1. **Geração de URL**: Lambda recebe requisição e retorna URL pré-assinada
+2. **Registro no DynamoDB**: FileKey é salvo com status "PENDING"
+3. **Upload S3**: Arquivo é enviado diretamente para o bucket
+4. **Trigger Automático**: S3 dispara evento para Lambda de processamento
+5. **Atualização de Status**: DynamoDB é atualizado para "UPLOADED"
+
+### APIs
+
+#### Geração de URL Pré-assinada
+
+**Requisição:**
+```typescript
+POST /
+{
+  "fileName": "exemplo.png"
+}
+```
+
+**Resposta:**
+```typescript
+{
+  "signedUrl": "https://bucket.s3.amazonaws.com/...",
+  "fileKey": "unique-file-key"
+}
+```
+
+#### Estrutura do DynamoDB
+
+**Tabela de Status:**
+```json
+{
+  "fileKey": "string",     // Chave primária
+  "status": "PENDING",     // PENDING | UPLOADED | FAILED
+  "fileName": "string",    // Nome original do arquivo
+  "uploadedAt": "timestamp",
+  "metadata": {
+    "size": "number",
+    "contentType": "string"
+  }
+}
+```
+
+## 📁 Estrutura do Projeto
+
+```
+src/
+├── components/
+│   └── ui/               # Componentes UI reutilizáveis
+│       ├── button.tsx
+│       ├── progress.tsx
+│       └── sonner.tsx
+├── lib/
+│   └── utils.ts          # Utilitários (cn, etc.)
+├── services/
+│   ├── getPresignedUrl.ts # Serviço para obter URLs pré-assinadas
+│   └── uploadFile.ts      # Serviço para upload de arquivos
+├── styles/
+│   └── index.css         # Estilos globais
+├── App.tsx               # Componente principal
+└── main.tsx              # Entrada da aplicação
+```
+
+## 🔧 Configuração
+
+### Pré-requisitos AWS
+
+Para executar este projeto, você precisará configurar os seguintes recursos na AWS:
+
+1. **S3 Bucket**
+   - Bucket para armazenamento de arquivos
+   - Configuração de CORS para permitir uploads do frontend
+   - Event notifications configuradas para trigger de Lambda
+
+2. **DynamoDB Table**
+   - Tabela com `fileKey` como chave primária
+   - Atributos: `status`, `fileName`, `uploadedAt`, `metadata`
+
+3. **AWS Lambda Functions**
+   - Função para geração de URLs pré-assinadas
+   - Função para processamento de triggers S3
+   - Permissões adequadas para S3 e DynamoDB
+
+4. **IAM Roles**
+   - Role para Lambda com permissões de S3 e DynamoDB
+   - Políticas de acesso adequadas
+
+### Variáveis de Ambiente
+
+Para desenvolvimento local, você pode configurar:
+
+```env
+VITE_LAMBDA_URL=sua-lambda-url-aqui
+VITE_AWS_REGION=us-east-1
+VITE_S3_BUCKET=seu-bucket-s3
+```
+
+### Personalização
+
+- **Tamanho máximo**: Atualmente limitado a 1MB (configurável no Lambda)
+- **Tipos de arquivo**: PNG (configurável no Lambda)
+- **Região AWS**: us-east-1 (configurável)
+- **Tabela DynamoDB**: Configurável para diferentes ambientes
+- **Bucket S3**: Configurável com diferentes políticas de acesso
+
+## 🤝 Contribuição
+
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+## 📝 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+## 👨‍💻 Autor
+
+**Marcos Bueno**
+- GitHub: [@MarcosvBueno](https://github.com/MarcosvBueno)
+
+---
+
+⭐ Se este projeto te ajudou, considere dar uma estrela no repositório!
