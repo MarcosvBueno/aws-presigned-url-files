@@ -150,6 +150,105 @@ POST /
 }
 ```
 
+### Código das Funções Lambda
+
+#### 1. Lambda de Geração de URL Pré-assinada
+
+```javascript
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { randomUUID } from 'node:crypto'
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb"
+
+const s3Client = new S3Client();
+const dynamoDBClient = new DynamoDBClient();
+
+export const handler = async (event) => {
+
+    const {fileName} = JSON.parse(event.body);
+
+    if(!fileName) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({
+                error: 'file name is required'
+            })
+        }
+    }
+
+    const fileKey = `${randomUUID()}-${fileName}`;
+ 
+    const s3Command = new PutObjectCommand({
+        Bucket: 'nome-do-seu-bucket',
+        Key: fileKey,
+    });
+    
+    const dynamoDBCommand = new PutItemCommand({
+        TableName: 'presigned-url-files',
+        Item: {
+            fileKey: {
+                S: fileKey
+            },
+            originalFileName: {
+                S: fileName
+            },
+            status: {
+                S: 'PENDING'
+            },
+            expiresAt: {
+                N: (Date.now() + 60000).toString()
+            },
+        }
+    });
+
+    const signedUrl = await getSignedUrl(s3Client, s3Command, {expiresIn: 60});
+
+    await dynamoDBClient.send(dynamoDBCommand);
+
+    return {
+        statusCode: 200,
+        body: JSON.stringify({
+            signedUrl,
+            fileKey
+        })
+   
+    }
+};
+```
+
+#### 2. Lambda Trigger S3 (Atualização de Status)
+
+```javascript
+import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import { PutCommand } from '@aws-sdk/lib-dynamodb';
+
+const dynamoDBClient = new DynamoDBClient()
+
+export const handler = async (event) => {
+
+  const commands = event.Records.map(record => {
+    return new UpdateItemCommand({
+      TableName: "presigned-url-files",
+      Key: {
+        fileKey: {
+          S: decodeURIComponent(record.s3.object.key),
+        }
+      },
+      UpdateExpression: "SET #status = :status REMOVE #expiresAt",
+      ExpressionAttributeNames: {
+        "#status": "status",
+        "#expiresAt": "expiresAt",
+      },
+      ExpressionAttributeValues: {
+        ":status": { S: "UPLOADED" },
+      },
+    });
+  })
+
+  await Promise.all(commands.map(command => dynamoDBClient.send(command)))
+}
+```
+
 ## 📁 Estrutura do Projeto
 
 ```
