@@ -35,13 +35,15 @@ function App() {
       uploadFile(file, url.signedUrl)
      )));
     
-     response.forEach((response ) => {
+     response.forEach((response,index ) => {
       if (response.status === 'rejected') {
-        console.error('Upload failed:', response.reason);
-      } else {
-        console.log('Upload successful:', response.value);
-      }
-     }) 
+        const fileWithError = urls[index].file;
+        console.error(`Upload failed for file ${fileWithError.name}:`, response.reason);
+      } else if (response.status === 'fulfilled') {
+        const fileWithSuccess = urls[index].file;
+        console.log(`Upload successful for file ${fileWithSuccess.name}:`, response.value);
+    
+      }})
   }
 
 
