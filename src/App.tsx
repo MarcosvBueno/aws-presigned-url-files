@@ -1,22 +1,25 @@
 import { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from './lib/utils';
-import { PackageOpenIcon, Trash2Icon } from 'lucide-react';
+import { Loader2Icon, PackageOpenIcon, Trash2Icon } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { getPresignedUrl } from './services/getPresignedUrl';
 import { uploadFile } from './services/uploadFile';
+import { Progress } from './components/ui/progress';
+import { toast, Toaster } from 'sonner';
 
 function App() {
-  const [files, setFiles] = useState<File[]>([]);
+  const [uploads, setUploads] = useState<{file: File, progress: number}[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: acceptedFiles => {
-      setFiles(prevState => prevState.concat(acceptedFiles));
+      setUploads(prevState => prevState.concat(acceptedFiles.map(file => ({ file, progress: 0 }))));
     },
   });
 
-  function handleRemoveFile(removingIndex: number) {
-    setFiles(prevState => {
+  function handleRemoveUpload(removingIndex: number) {
+    setUploads(prevState => {
       const newFiles = [...prevState];
       newFiles.splice(removingIndex, 1);
       return newFiles;
@@ -24,32 +27,46 @@ function App() {
   }
 
   async function handleUpload() {
-    const urls = await Promise.all(
-      files.map(async (file) => ({
+    setLoading(true);
+    try {
+      const urls = await Promise.all(
+      uploads.map(async ({file}) => ({
         file,
         url: await getPresignedUrl(file),
       }))
     );
 
-      const response = await Promise.allSettled(urls.map(({ file, url }) => (
-      uploadFile(file, url.signedUrl)
+      const response = await Promise.allSettled(urls.map(({ file, url }, index) => (
+      uploadFile(file, url.signedUrl, (progress) => {
+          setUploads(prevState => {
+      const newState = [...prevState];
+      const upload= newState[index]
+      newState[index] = {
+        ...upload,
+        progress,
+      };
+      return newState;
+    });
+      })
      )));
     
      response.forEach((response,index ) => {
       if (response.status === 'rejected') {
         const fileWithError = urls[index].file;
         console.error(`Upload failed for file ${fileWithError.name}:`, response.reason);
-      } else if (response.status === 'fulfilled') {
-        const fileWithSuccess = urls[index].file;
-        console.log(`Upload successful for file ${fileWithSuccess.name}:`, response.value);
-    
       }})
+    } catch (error) {} finally {
+      toast.success('Upload concluído com sucesso!');
+      setUploads([]);
+      setLoading(false);
+    }
   }
 
 
 
   return (
     <div className="min-h-screen flex justify-center py-20 px-6">
+      <Toaster/>
       <div className="w-full max-w-xl">
         <div
           {...getRootProps()}
@@ -69,26 +86,30 @@ function App() {
           </small>
         </div>
 
-        {files.length > 0 && (
+        {uploads.length > 0 && (
           <div className='mt-10'>
             <h2 className='font-medium text-2xl tracking-tight'>Arquivos selecionados</h2>
 
             <div className='mt-4 space-y-2'>
-              {files.map((file, index) => (
+              {uploads.map(({file, progress}, index) => (
               <div
-                key={index} className='border p-3 rounded-md flex justify-between items-center'>
-                  <span className='text-sm '>
+                key={index} className='border p-3 rounded-md '>
+                  <div className='flex justify-between items-center'>
+                    <span className='text-sm '>
                     {file.name}
                     </span>
 
-                    <Button variant={"destructive"} size={"icon"} onClick={() => handleRemoveFile(index)}>
+                    <Button variant={"destructive"} size={"icon"} onClick={() => handleRemoveUpload(index)}>
                     <Trash2Icon className='size-4' />
                     </Button>
+                  </div>
+                  <Progress value={progress} className='h-2 mt-3' />
                 </div>
             ))}
 
             </div>
-            <Button className='mt-4 w-full cursor-pointer' size='lg' onClick={handleUpload}>
+            <Button className='mt-4 w-full cursor-pointer gap-1' size='lg' onClick={handleUpload} disabled={loading}>
+            {loading &&  <Loader2Icon className='size-4 animate-spin'/>}  
               Upload
             </Button>
           </div>
