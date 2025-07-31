@@ -43,28 +43,8 @@ Este projeto demonstra uma implementação completa e robusta para upload de arq
 
 ## 🏗️ Arquitetura
 
-```
-                                    S3 Triggers
-                                        ↓
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   React App     │────│  AWS Lambda     │────│   Amazon S3     │────│  AWS Lambda     │
-│                 │    │                 │    │                 │    │                 │
-│ • Upload UI     │    │ • Generate      │    │ • File Storage  │    │ • Update Status │
-│ • Progress      │    │   Presigned URL │    │ • Event Trigger │    │ • Process Events│
-│ • File Preview  │    │ • Save Status   │    │ • Direct Upload │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
-                                │                                              │
-                                │                                              │
-                                ▼                                              ▼
-                       ┌─────────────────┐                         ┌─────────────────┐
-                       │  Amazon         │◄────────────────────────│   Status Update │
-                       │  DynamoDB       │                         │   (UPLOADED)    │
-                       │                 │                         │                 │
-                       │ • FileKey       │                         │                 │
-                       │ • Status        │                         │                 │
-                       │ • Metadata      │                         │                 │
-                       └─────────────────┘                         └─────────────────┘
-```
+<img width="1076" height="694" alt="image" src="https://github.com/user-attachments/assets/758d8d89-8277-4e38-83b6-a48b144b3c36" />
+
 
 ### Fluxo de Upload
 
@@ -231,14 +211,6 @@ VITE_S3_BUCKET=seu-bucket-s3
 - **Região AWS**: us-east-1 (configurável)
 - **Tabela DynamoDB**: Configurável para diferentes ambientes
 - **Bucket S3**: Configurável com diferentes políticas de acesso
-
-## 🤝 Contribuição
-
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
 
 ## 📝 Licença
 
